@@ -1,71 +1,59 @@
 const inquirer = require("inquirer");
 const fetch = require("node-fetch");
+const blessed = require('neo-blessed');
+const { Client } = require('discord.js-selfbot-v13');
+const client = new Client({
+	checkUpdate: false
+});
 inquirer.registerPrompt('search-list', require('inquirer-search-list'));
-const token = ""
+const token = "";
+
+let dmuser;
+
+client.login(token);
 
 (async () => {
 
-	let arg = process.argv[2];
-	if(!arg) return console.log("Please write a arg");
-	arg = arg.toLowerCase();
+	let friendsReq = await fetch("https://discord.com/api/v9/users/@me/relationships", {
+		headers: {
+			"Authorization": token
+		}
+	});
 
-	if (arg == "dm" || arg == "--dm" || arg == "-dm") {
-		let friendsReq = await fetch("https://discord.com/api/v9/users/@me/relationships", {
-			headers: {
-				"Authorization": token
-			}
-		});
+	friendsReq = await friendsReq.json();
 
-		friendsReq = await friendsReq.json();
+	let friends = friendsReq.map(f => ({
+		name: `${f.user.username}#${f.user.discriminator}`,
+		value: f.id
+	}));
 
-
-
-		let friends = friendsReq.map(f => ({
-			name: `${f.user.username}#${f.user.discriminator}`,
-			value: f.id
-		}));
-
-		inquirer
-			.prompt([
-				{
-					type: 'search-list',
-					message: "Select",
-					name: "user",
-					choices: friends
-				}, {
-					message: "Message",
-					name: "message",
-				},])
+	client.on("ready", async () => {
+		await console.clear();
+		inquirer.prompt(
+			{
+				type: 'search-list',
+				message: "Select",
+				name: "user",
+				choices: friends
+			})
 			.then(async (answers) => {
-				let channelReq = await fetch(`https://discord.com/api/v9/users/@me/channels`, {
-					method: "POST",
-					headers: {
-						"Authorization": token,
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						"recipient_id": answers.user
-					})
+				console.clear();
+				var readline = require('readline');
+  
+				var rl = readline.createInterface(
+					process.stdin, process.stdout);
+
+				rl.question('', async (message) => {
+					await client.users.cache.get(answers.user).send({
+						content: message,
+					});
 				});
 
-				channelReq = await channelReq.json();
-
-				let dmReq = await fetch(`https://discord.com/api/v9/channels/${channelReq.id}/messages`, {
-					method: "POST",
-					headers: {
-						"Authorization": token,
-						"content-type": "application/json",
-					},
-					body: JSON.stringify({
-						content: answers.message
-					})
+				client.on("messageCreate", (message) => {
+					if (message.channel.type == "DM" && message.author.id == answers.user) {
+						console.log(`${message.author.username}: ${message.content}`);
+					};
 				});
-
-				dmReq = await dmReq.json();
-
-				console.log("Sended");
 			});
-	}else {
-		console.warn("Error.")
-	};
+	});
 })();
