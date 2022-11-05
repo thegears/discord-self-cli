@@ -1,6 +1,5 @@
 const inquirer = require("inquirer");
 const fetch = require("node-fetch");
-const blessed = require('neo-blessed');
 const { Client } = require('discord.js-selfbot-v13');
 const client = new Client({
 	checkUpdate: false
@@ -38,14 +37,17 @@ client.login(token);
 			})
 			.then(async (answers) => {
 				console.clear();
+
 				var readline = require('readline');
   
 				var rl = readline.createInterface(
 					process.stdin, process.stdout);
 
-				rl.question('', async (message) => {
-					await client.users.cache.get(answers.user).send({
-						content: message,
+
+
+				rl.on('line', (input) => {
+					if(input) client.users.cache.get(answers.user).send({
+						content: input
 					});
 				});
 
